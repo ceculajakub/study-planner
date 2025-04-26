@@ -1,0 +1,85 @@
+/* You can add global styles to this file, and also import other style files */
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+}
+
+body {
+  background-color: #fafafa;
+}
+
+.mat-typography {
+  font: 400 14px/20px Roboto, "Helvetica Neue", sans-serif;
+  letter-spacing: normal;
+}
+
+/* Flex utilities */
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.h-full {
+  height: 100%;
+}
+
+/* Spacing utilities */
+.m-4 {
+  margin: 1rem;
+}
+
+.p-4 {
+  padding: 1rem;
+}
+
+/* Card styles */
+.mat-mdc-card {
+  margin: 1rem;
+  border-radius: 8px;
+}
+
+/* Form field styles */
+.mat-mdc-form-field {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+/* Button styles */
+.mat-mdc-button-base {
+  margin: 0.5rem;
+}
+
+/* Container styles */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* Responsive utilities */
+@media (max-width: 600px) {
+  .container {
+    padding: 0.5rem;
+  }
+  
+  .mat-mdc-card {
+    margin: 0.5rem;
+  }
+} 
