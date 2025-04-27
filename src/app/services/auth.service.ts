@@ -35,8 +35,12 @@ export class AuthService {
     try {
       const result = await signInWithEmailAndPassword(this.auth, email, password);
       return result;
-    } catch (error) {
-      throw error;
+    } catch (error: any) {
+      console.error('Sign in error:', error);
+      throw {
+        code: error.code,
+        message: this.getErrorMessage(error.code)
+      };
     }
   }
 
@@ -44,8 +48,12 @@ export class AuthService {
     try {
       const result = await createUserWithEmailAndPassword(this.auth, email, password);
       return result;
-    } catch (error) {
-      throw error;
+    } catch (error: any) {
+      console.error('Sign up error:', error);
+      throw {
+        code: error.code,
+        message: this.getErrorMessage(error.code)
+      };
     }
   }
 
@@ -64,15 +72,10 @@ export class AuthService {
       return result;
     } catch (error: any) {
       console.error('Google Sign-In error:', error);
-      if (error.code === 'auth/popup-closed-by-user') {
-        throw new Error('Sign-in was cancelled');
-      } else if (error.code === 'auth/popup-blocked') {
-        throw new Error('Popup was blocked by the browser. Please allow popups for this site.');
-      } else if (error.code === 'auth/operation-not-supported-in-this-environment') {
-        throw new Error('Google Sign-In is not supported in this environment');
-      } else {
-        throw error;
-      }
+      throw {
+        code: error.code,
+        message: this.getErrorMessage(error.code)
+      };
     }
   }
 
@@ -80,8 +83,49 @@ export class AuthService {
     try {
       await signOut(this.auth);
       this.router.navigate(['/login']);
-    } catch (error) {
-      throw error;
+    } catch (error: any) {
+      console.error('Sign out error:', error);
+      throw {
+        code: error.code,
+        message: this.getErrorMessage(error.code)
+      };
+    }
+  }
+
+  private getErrorMessage(errorCode: string): string {
+    switch (errorCode) {
+      // Common errors
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address.';
+      case 'auth/user-disabled':
+        return 'This account has been disabled. Please contact support.';
+      case 'auth/user-not-found':
+        return 'No account found with this email.';
+      case 'auth/invalid-credential':
+        return 'Incorrect password. Please try again.';
+      case 'auth/email-already-in-use':
+        return 'This email is already registered. Please sign in.';
+      case 'auth/weak-password':
+        return 'Password should be at least 6 characters long.';
+      case 'auth/operation-not-allowed':
+        return 'Email/password accounts are not enabled. Please contact support.';
+      case 'auth/network-request-failed':
+        return 'Network error. Please check your internet connection.';
+      case 'auth/too-many-requests':
+        return 'Too many attempts. Please try again later.';
+      
+      // Google Sign-in specific errors
+      case 'auth/popup-closed-by-user':
+        return 'Sign-in was cancelled.';
+      case 'auth/popup-blocked':
+        return 'Popup was blocked by the browser. Please allow popups for this site.';
+      case 'auth/operation-not-supported-in-this-environment':
+        return 'Google Sign-In is not supported in this environment.';
+      case 'auth/cancelled-popup-request':
+        return 'Another sign-in attempt is in progress.';
+      
+      default:
+        return 'An error occurred. Please try again.';
     }
   }
 } 

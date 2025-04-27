@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { DataService, Task, Goal, Note } from '../../services/data.service';
@@ -11,8 +11,9 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
 import { Timestamp } from '@angular/fire/firestore';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 import { NavigationComponent } from '../navigation/navigation.component';
+import { User } from '@angular/fire/auth';
 
 @Component({
   selector: 'app-dashboard',
@@ -207,11 +208,12 @@ import { NavigationComponent } from '../navigation/navigation.component';
     }
   `]
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   recentTasks: Task[] = [];
   activeGoals: Goal[] = [];
   recentNotes: Note[] = [];
   isLoading = false;
+  private authSubscription!: Subscription;
 
   constructor(
     private dataService: DataService,
@@ -219,8 +221,23 @@ export class DashboardComponent implements OnInit {
     private snackBar: MatSnackBar
   ) {}
 
-  async ngOnInit() {
-    await this.loadData();
+  ngOnInit() {
+    // Subscribe to auth state changes
+    this.authSubscription = this.authService.user$.subscribe(async (user: User | null) => {
+      if (user) {
+        await this.loadData();
+      } else {
+        this.recentTasks = [];
+        this.activeGoals = [];
+        this.recentNotes = [];
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.authSubscription) {
+      this.authSubscription.unsubscribe();
+    }
   }
 
   async loadData() {
@@ -241,42 +258,30 @@ export class DashboardComponent implements OnInit {
         notesPromise
       ]);
 
-      console.log('Dashboard notes raw:', notes);
-
       // Convert Firestore Timestamps to Dates and sort tasks
       this.recentTasks = tasks
         .map(task => ({
           ...task,
           dueDate: this.convertToDate(task.dueDate)
         }))
-        .sort((a, b) => b.dueDate.getTime() - a.dueDate.getTime())
+        .sort((a, b) => (a.dueDate?.getTime() || 0) - (b.dueDate?.getTime() || 0))
         .slice(0, 5);
 
-      // Convert Firestore Timestamps to Dates and sort goals
       this.activeGoals = goals
-        .map(goal => ({
-          ...goal,
-          targetDate: this.convertToDate(goal.targetDate)
-        }))
         .filter(goal => goal.progress < 100)
         .slice(0, 5);
 
-      // Convert Firestore Timestamps to Dates and sort notes
       this.recentNotes = notes
-        .map(note => {
-          const createdAt = note.createdAt instanceof Timestamp ? note.createdAt.toDate() : new Date(note.createdAt);
-          return {
-            ...note,
-            createdAt
-          };
-        })
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .map(note => ({
+          ...note,
+          createdAt: this.convertToDate(note.createdAt)
+        }))
+        .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))
         .slice(0, 5);
 
-      console.log('Dashboard notes mapped:', this.recentNotes);
     } catch (error) {
       console.error('Error loading data:', error);
-      this.showError('Failed to load data');
+      this.showError('Failed to load data. Please try again.');
     } finally {
       this.isLoading = false;
     }
@@ -307,14 +312,21 @@ export class DashboardComponent implements OnInit {
 
   async toggleTask(task: Task) {
     try {
-      if (!task.id) {
-        throw new Error('Task ID is required');
-      }
-      await this.dataService.updateTask(task.id, { completed: !task.completed });
+      const updatedTask = { ...task, completed: !task.completed };
+      await this.dataService.updateTask(task.id!, updatedTask);
       this.showSuccess('Task updated successfully');
-      await this.loadData();
     } catch (error) {
       this.showError('Failed to update task');
+    }
+  }
+
+  async toggleGoalProgress(goal: Goal) {
+    try {
+      const newProgress = goal.progress >= 100 ? 0 : goal.progress + 10;
+      await this.dataService.updateGoal(goal.id!, { progress: newProgress });
+      this.showSuccess('Goal progress updated successfully');
+    } catch (error) {
+      this.showError('Failed to update goal progress');
     }
   }
 

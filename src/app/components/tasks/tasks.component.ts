@@ -91,22 +91,31 @@ import { NavigationComponent } from '../navigation/navigation.component';
               <mat-spinner diameter="30"></mat-spinner>
             </div>
             <mat-list *ngIf="!isLoading">
-              <mat-list-item *ngFor="let task of tasks">
-                <div class="task-item">
-                  <mat-checkbox [checked]="task.completed" (change)="toggleTask(task)"></mat-checkbox>
-                  <div class="task-content">
-                    <div class="task-title">{{ task.title }}</div>
+              <mat-list-item *ngFor="let task of tasks" class="task-item">
+                <div class="task-content">
+                  <mat-checkbox [checked]="task.completed" (change)="toggleTask(task)" color="primary"></mat-checkbox>
+                  <div class="task-details" [class.completed]="task.completed">
+                    <div class="task-header">
+                      <span class="task-title">{{ task.title }}</span>
+                      <span class="task-due-date">
+                        <mat-icon class="due-date-icon">event</mat-icon>
+                        {{ task.dueDate | date:'mediumDate' }}
+                      </span>
+                    </div>
                     <div class="task-description">{{ task.description }}</div>
-                    <div class="task-due-date">Due: {{ task.dueDate | date }}</div>
                   </div>
-                  <button mat-icon-button color="warn" (click)="deleteTask(task)" matTooltip="Delete task">
-                    <mat-icon svgIcon="delete"></mat-icon>
-                  </button>
+                  <div class="task-actions">
+                    <button mat-icon-button color="warn" (click)="deleteTask(task)" matTooltip="Delete task">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
                 </div>
                 <mat-divider></mat-divider>
               </mat-list-item>
               <mat-list-item *ngIf="tasks.length === 0">
-                <div class="no-tasks">No tasks yet. Add your first task above!</div>
+                <div class="no-tasks">
+                  <p>No tasks yet. Add your first task above!</p>
+                </div>
               </mat-list-item>
             </mat-list>
           </mat-card-content>
@@ -122,6 +131,8 @@ import { NavigationComponent } from '../navigation/navigation.component';
 
     .task-form-card, .tasks-list-card {
       margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .task-form {
@@ -137,51 +148,111 @@ import { NavigationComponent } from '../navigation/navigation.component';
     .form-actions {
       display: flex;
       justify-content: flex-end;
+      margin-top: 16px;
     }
 
     .task-item {
-      display: flex;
-      align-items: center;
-      width: 100%;
-      padding: 8px 0;
+      height: auto !important;
+      padding: 16px 0;
     }
 
     .task-content {
+      display: flex;
+      align-items: flex-start;
+      width: 100%;
+      gap: 16px;
+    }
+
+    .task-details {
       flex: 1;
-      margin-left: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .task-details.completed {
+      opacity: 0.6;
+      text-decoration: line-through;
+    }
+
+    .task-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
     }
 
     .task-title {
       font-weight: 500;
+      font-size: 16px;
+      color: rgba(0, 0, 0, 0.87);
     }
 
     .task-description {
       color: rgba(0, 0, 0, 0.6);
-      font-size: 0.9em;
-      margin: 4px 0;
+      font-size: 14px;
+      line-height: 1.5;
     }
 
     .task-due-date {
+      display: flex;
+      align-items: center;
+      gap: 4px;
       color: rgba(0, 0, 0, 0.6);
-      font-size: 0.8em;
+      font-size: 14px;
+    }
+
+    .due-date-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+
+    .task-actions {
+      display: flex;
+      gap: 8px;
     }
 
     .no-tasks {
-      color: rgba(0, 0, 0, 0.6);
-      font-style: italic;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
       text-align: center;
-      width: 100%;
+      color: rgba(0, 0, 0, 0.6);
+    }
+
+    .no-tasks-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+      color: rgba(0, 0, 0, 0.3);
     }
 
     .loading-spinner {
       display: flex;
       justify-content: center;
-      padding: 20px;
+      padding: 32px;
+    }
+
+    mat-divider {
+      margin: 8px 0;
     }
 
     @media (max-width: 599px) {
       .tasks-content {
         margin-top: 56px;
+      }
+
+      .task-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .task-due-date {
+        font-size: 12px;
       }
     }
   `]

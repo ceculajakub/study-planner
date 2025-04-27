@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-navigation',
@@ -25,6 +26,10 @@ import { MatListModule } from '@angular/material/list';
         <mat-icon>menu</mat-icon>
       </button>
       <span>Study Planner</span>
+      <span class="spacer"></span>
+      <button mat-icon-button (click)="signOut()" matTooltip="Sign out">
+        <mat-icon>logout</mat-icon>
+      </button>
     </mat-toolbar>
 
     <mat-sidenav-container>
@@ -79,6 +84,10 @@ import { MatListModule } from '@angular/material/list';
       background-color: rgba(0, 0, 0, 0.04);
     }
 
+    .spacer {
+      flex: 1 1 auto;
+    }
+
     @media (max-width: 599px) {
       mat-sidenav-container {
         top: 56px;
@@ -86,4 +95,14 @@ import { MatListModule } from '@angular/material/list';
     }
   `]
 })
-export class NavigationComponent {} 
+export class NavigationComponent {
+  constructor(private authService: AuthService) {}
+
+  async signOut() {
+    try {
+      await this.authService.signOut();
+    } catch (error) {
+      console.error('Sign out failed:', error);
+    }
+  }
+} 

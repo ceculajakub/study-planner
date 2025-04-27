@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { MatCardModule } from '@angular/material/card';
@@ -9,6 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-login',
@@ -22,7 +23,8 @@ import { MatIconModule } from '@angular/material/icon';
     MatInputModule,
     MatButtonModule,
     MatDividerModule,
-    MatIconModule
+    MatIconModule,
+    MatSnackBarModule
   ],
   template: `
     <div class="login-container">
@@ -32,25 +34,44 @@ import { MatIconModule } from '@angular/material/icon';
         </mat-card-header>
         
         <mat-card-content>
-          <form (ngSubmit)="onSubmit()">
+          <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Email</mat-label>
-              <input matInput type="email" [(ngModel)]="email" name="email" required>
+              <mat-icon matPrefix>email</mat-icon>
+              <input matInput type="email" formControlName="email">
+              <mat-error *ngIf="loginForm.get('email')?.hasError('required')">
+                Email is required
+              </mat-error>
+              <mat-error *ngIf="loginForm.get('email')?.hasError('email')">
+                Please enter a valid email address
+              </mat-error>
             </mat-form-field>
 
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Password</mat-label>
-              <input matInput type="password" [(ngModel)]="password" name="password" required>
+              <mat-icon matPrefix>lock</mat-icon>
+              <input matInput type="password" formControlName="password">
+              <mat-error *ngIf="loginForm.get('password')?.hasError('required')">
+                Password is required
+              </mat-error>
             </mat-form-field>
 
-            <button mat-raised-button color="primary" type="submit" class="full-width">
-              Sign in
+            <button mat-raised-button color="primary" type="submit" class="full-width" [disabled]="isLoading || loginForm.invalid">
+              <mat-icon>login</mat-icon>
+              <span>{{ isLoading ? 'Signing in...' : 'Sign in' }}</span>
             </button>
           </form>
 
+          <div class="register-link">
+            <button mat-button (click)="navigateToRegister()">
+              <mat-icon>person_add</mat-icon>
+              <span>Don't have an account? Register here</span>
+            </button>
+          </div>
+
           <mat-divider class="my-3"></mat-divider>
 
-          <button mat-raised-button (click)="signInWithGoogle()" class="full-width google-button">
+          <button mat-raised-button (click)="signInWithGoogle()" class="full-width google-button" [disabled]="isLoading">
             <mat-icon class="google-icon">g_mobiledata</mat-icon>
             <span>Sign in with Google</span>
           </button>
@@ -114,32 +135,69 @@ import { MatIconModule } from '@angular/material/icon';
       width: 18px;
       height: 18px;
     }
+
+    .register-link {
+      text-align: center;
+      margin: 16px 0;
+    }
   `]
 })
 export class LoginComponent {
-  email: string = '';
-  password: string = '';
+  loginForm: FormGroup;
+  isLoading: boolean = false;
 
   constructor(
     private authService: AuthService,
-    private router: Router
-  ) {}
+    private router: Router,
+    private snackBar: MatSnackBar,
+    private fb: FormBuilder
+  ) {
+    this.loginForm = this.fb.group({
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required]]
+    });
+  }
 
   async onSubmit() {
+    if (this.loginForm.invalid) {
+      return;
+    }
+
+    this.isLoading = true;
     try {
-      await this.authService.signInWithEmail(this.email, this.password);
+      await this.authService.signInWithEmail(
+        this.loginForm.get('email')?.value,
+        this.loginForm.get('password')?.value
+      );
+      this.snackBar.open('Login successful! Redirecting to dashboard...', 'Close', {
+        duration: 3000
+      });
       this.router.navigate(['/dashboard']);
-    } catch (error) {
-      console.error('Login failed:', error);
+    } catch (error: any) {
+      this.isLoading = false;
+      this.snackBar.open(error.message, 'Close', {
+        duration: 5000
+      });
     }
   }
 
   async signInWithGoogle() {
+    this.isLoading = true;
     try {
       await this.authService.signInWithGoogle();
+      this.snackBar.open('Login successful! Redirecting to dashboard...', 'Close', {
+        duration: 3000
+      });
       this.router.navigate(['/dashboard']);
-    } catch (error) {
-      console.error('Google sign-in failed:', error);
+    } catch (error: any) {
+      this.isLoading = false;
+      this.snackBar.open(error.message, 'Close', {
+        duration: 5000
+      });
     }
+  }
+
+  navigateToRegister() {
+    this.router.navigate(['/register']);
   }
 } 
