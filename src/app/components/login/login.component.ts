@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -145,16 +145,23 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 export class LoginComponent {
   loginForm: FormGroup;
   isLoading: boolean = false;
+  private returnUrl: string = '/dashboard';
 
   constructor(
     private authService: AuthService,
     private router: Router,
+    private route: ActivatedRoute,
     private snackBar: MatSnackBar,
     private fb: FormBuilder
   ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required]]
+    });
+
+    // Get return URL from route parameters or default to '/dashboard'
+    this.route.queryParams.subscribe(params => {
+      this.returnUrl = params['returnUrl'] || '/dashboard';
     });
   }
 
@@ -169,10 +176,10 @@ export class LoginComponent {
         this.loginForm.get('email')?.value,
         this.loginForm.get('password')?.value
       );
-      this.snackBar.open('Login successful! Redirecting to dashboard...', 'Close', {
+      this.snackBar.open('Login successful!', 'Close', {
         duration: 3000
       });
-      this.router.navigate(['/dashboard']);
+      this.router.navigate([this.returnUrl]);
     } catch (error: any) {
       this.isLoading = false;
       this.snackBar.open(error.message, 'Close', {
@@ -185,10 +192,10 @@ export class LoginComponent {
     this.isLoading = true;
     try {
       await this.authService.signInWithGoogle();
-      this.snackBar.open('Login successful! Redirecting to dashboard...', 'Close', {
+      this.snackBar.open('Login successful!', 'Close', {
         duration: 3000
       });
-      this.router.navigate(['/dashboard']);
+      this.router.navigate([this.returnUrl]);
     } catch (error: any) {
       this.isLoading = false;
       this.snackBar.open(error.message, 'Close', {

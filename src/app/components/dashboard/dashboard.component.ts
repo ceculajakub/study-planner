@@ -7,6 +7,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatListModule } from '@angular/material/list';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
@@ -25,6 +26,7 @@ import { User } from '@angular/fire/auth';
     MatListModule,
     MatDividerModule,
     MatProgressSpinnerModule,
+    MatProgressBarModule,
     MatSnackBarModule,
     MatCheckboxModule,
     MatButtonModule,
@@ -64,9 +66,27 @@ import { User } from '@angular/fire/auth';
               <mat-card-title>Active Goals</mat-card-title>
             </mat-card-header>
             <mat-card-content>
-              <mat-list>
-                <mat-list-item *ngFor="let goal of activeGoals">
-                  {{ goal.title }}
+              <div *ngIf="isLoading" class="loading-spinner">
+                <mat-spinner diameter="30"></mat-spinner>
+              </div>
+              <mat-list *ngIf="!isLoading">
+                <mat-list-item *ngFor="let goal of activeGoals" class="goal-item">
+                  <div class="goal-content">
+                    <div class="goal-header">
+                      <div class="goal-title">{{ goal.title }}</div>
+                      <div class="goal-target-date">Target: {{ formatDate(goal.targetDate) }}</div>
+                    </div>
+                    <div class="goal-progress">
+                      <div class="progress-header">
+                        <span class="progress-label">Progress</span>
+                        <span class="progress-value">{{ goal.progress }}%</span>
+                      </div>
+                      <mat-progress-bar mode="determinate" [value]="goal.progress"></mat-progress-bar>
+                    </div>
+                  </div>
+                </mat-list-item>
+                <mat-list-item *ngIf="activeGoals.length === 0">
+                  <div class="no-items">No active goals</div>
                 </mat-list-item>
               </mat-list>
             </mat-card-content>
@@ -206,6 +226,65 @@ import { User } from '@angular/fire/auth';
       width: 100%;
       margin-top: 8px;
     }
+
+    .goal-item {
+      height: auto !important;
+      padding: 16px 0;
+    }
+
+    .goal-content {
+      width: 100%;
+    }
+
+    .goal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .goal-title {
+      font-weight: 500;
+      font-size: 16px;
+    }
+
+    .goal-target-date {
+      color: rgba(0, 0, 0, 0.6);
+      font-size: 14px;
+    }
+
+    .goal-progress {
+      margin-top: 8px;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .progress-label {
+      color: rgba(0, 0, 0, 0.6);
+      font-size: 14px;
+    }
+
+    .progress-value {
+      color: rgba(0, 0, 0, 0.6);
+      font-size: 14px;
+    }
+
+    @media (max-width: 599px) {
+      .goal-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+
+      .goal-target-date {
+        font-size: 12px;
+      }
+    }
   `]
 })
 export class DashboardComponent implements OnInit, OnDestroy {
@@ -222,7 +301,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    // Subscribe to auth state changes
     this.authSubscription = this.authService.user$.subscribe(async (user: User | null) => {
       if (user) {
         await this.loadData();
@@ -258,13 +336,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
         notesPromise
       ]);
 
-      // Convert Firestore Timestamps to Dates and sort tasks
       this.recentTasks = tasks
         .map(task => ({
           ...task,
           dueDate: this.convertToDate(task.dueDate)
         }))
-        .sort((a, b) => (a.dueDate?.getTime() || 0) - (b.dueDate?.getTime() || 0))
+        .sort((a, b) => {
+          const dateA = a.dueDate instanceof Date ? a.dueDate.getTime() : 0;
+          const dateB = b.dueDate instanceof Date ? b.dueDate.getTime() : 0;
+          return dateA - dateB;
+        })
         .slice(0, 5);
 
       this.activeGoals = goals
@@ -276,7 +357,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
           ...note,
           createdAt: this.convertToDate(note.createdAt)
         }))
-        .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))
+        .sort((a, b) => {
+          const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+          const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+          return dateB - dateA;
+        })
         .slice(0, 5);
 
     } catch (error) {

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Firestore, collection, collectionData, doc, docData, addDoc, updateDoc, deleteDoc, query, where } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 export interface Task {
   id?: string;
@@ -15,7 +16,7 @@ export interface Goal {
   id?: string;
   title: string;
   description: string;
-  targetDate: Date;
+  targetDate: Date | string;
   progress: number;
   userId: string;
 }
@@ -74,17 +75,40 @@ export class DataService {
   getGoals(userId: string): Observable<Goal[]> {
     const goalsRef = collection(this.firestore, 'goals');
     const q = query(goalsRef, where('userId', '==', userId));
-    return collectionData(q, { idField: 'id' }) as Observable<Goal[]>;
+    return collectionData(q, { idField: 'id' }).pipe(
+      map((goals: any[]) => goals.map(goal => ({
+        ...goal,
+        targetDate: new Date(goal.targetDate),
+        progress: Number(goal.progress) || 0
+      })))
+    ) as Observable<Goal[]>;
   }
 
   addGoal(goal: Goal) {
     const goalsRef = collection(this.firestore, 'goals');
-    return addDoc(goalsRef, goal);
+    const goalData = {
+      ...goal,
+      targetDate: goal.targetDate instanceof Date ? goal.targetDate.toISOString() : goal.targetDate,
+      progress: Number(goal.progress) || 0
+    };
+    return addDoc(goalsRef, goalData);
   }
 
   updateGoal(goalId: string, goal: Partial<Goal>) {
     const goalRef = doc(this.firestore, `goals/${goalId}`);
-    return updateDoc(goalRef, goal);
+    const updateData = { ...goal };
+    
+    // Convert date if it exists
+    if (updateData.targetDate instanceof Date) {
+      updateData.targetDate = updateData.targetDate.toISOString();
+    }
+    
+    // Ensure progress is a number
+    if (typeof updateData.progress === 'number') {
+      updateData.progress = Math.max(0, Math.min(100, updateData.progress));
+    }
+    
+    return updateDoc(goalRef, updateData);
   }
 
   deleteGoal(goalId: string) {

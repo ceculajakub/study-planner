@@ -1,10 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { DataService, Task } from '../../services/data.service';
 import { AuthService } from '../../services/auth.service';
 import { DeviceService } from '../../services/device.service';
+import { NotificationService } from '../../services/notification.service';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -20,6 +21,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatButtonModule } from '@angular/material/button';
 import { NavigationComponent } from '../navigation/navigation.component';
+import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { User } from '@angular/fire/auth';
 
 @Component({
   selector: 'app-tasks',
@@ -257,7 +261,7 @@ import { NavigationComponent } from '../navigation/navigation.component';
     }
   `]
 })
-export class TasksComponent implements OnInit {
+export class TasksComponent implements OnInit, OnDestroy {
   tasks: Task[] = [];
   newTask: Partial<Task> = {
     title: '',
@@ -266,40 +270,53 @@ export class TasksComponent implements OnInit {
     completed: false
   };
   isLoading = false;
+  userId: string | null = null;
+  private authSubscription!: Subscription;
 
   constructor(
     private dataService: DataService,
     private authService: AuthService,
     private deviceService: DeviceService,
-    private snackBar: MatSnackBar
+    private notificationService: NotificationService,
+    private router: Router
   ) {}
 
   ngOnInit() {
-    this.loadTasks();
+    // Subscribe to auth state changes
+    this.authSubscription = this.authService.user$.subscribe(async (user: User | null) => {
+      if (user) {
+        this.userId = user.uid;
+        await this.loadTasks();
+      } else {
+        this.tasks = [];
+        this.userId = null;
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.authSubscription) {
+      this.authSubscription.unsubscribe();
+    }
   }
 
   async loadTasks() {
     try {
-      console.log('Loading tasks...');
-      const user = await this.authService.getCurrentUser();
-      console.log('User in loadTasks:', user);
-      
-      if (user) {
-        console.log('User ID:', user.uid);
-        this.dataService.getTasks(user.uid).subscribe({
-          next: (tasks) => {
-            console.log('Tasks loaded:', tasks);
-            this.tasks = tasks.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
-          },
-          error: (error) => {
-            console.error('Error loading tasks:', error);
-          }
-        });
-      } else {
-        console.error('No user found when loading tasks');
-      }
+      this.isLoading = true;
+      this.dataService.getTasks(this.userId!).subscribe({
+        next: (tasks) => {
+          this.tasks = tasks;
+        },
+        error: (error) => {
+          console.error('Error loading tasks:', error);
+          this.notificationService.showError('Failed to load tasks');
+        }
+      });
     } catch (error) {
-      console.error('Error in loadTasks:', error);
+      console.error('Error loading tasks:', error);
+      this.notificationService.showError('Failed to load tasks');
+    } finally {
+      this.isLoading = false;
     }
   }
 
@@ -339,38 +356,36 @@ export class TasksComponent implements OnInit {
 
       // Reload tasks to show the new one
       await this.loadTasks();
-      this.showSuccess('Task added successfully');
+      this.notificationService.showSuccess('Task added successfully');
     } catch (error) {
       console.error('Error adding task:', error);
-      this.showError('An error occurred while adding the task');
+      this.notificationService.showError('An error occurred while adding the task');
     } finally {
       this.isLoading = false;
     }
   }
 
   async toggleTask(task: Task) {
-    task.completed = !task.completed;
-    await this.dataService.updateTask(task.id!, task);
-    if (task.completed) {
-      await this.deviceService.vibrate();
+    try {
+      task.completed = !task.completed;
+      await this.dataService.updateTask(task.id!, task);
+      if (task.completed) {
+        this.deviceService.vibrate(200);
+        this.notificationService.showSuccess('Task completed!');
+      }
+    } catch (error) {
+      console.error('Error toggling task:', error);
+      this.notificationService.showError('Failed to update task');
     }
   }
 
   async deleteTask(task: Task) {
-    await this.dataService.deleteTask(task.id!);
-  }
-
-  private showError(message: string) {
-    this.snackBar.open(message, 'Close', {
-      duration: 5000,
-      panelClass: ['error-snackbar']
-    });
-  }
-
-  private showSuccess(message: string) {
-    this.snackBar.open(message, 'Close', {
-      duration: 3000,
-      panelClass: ['success-snackbar']
-    });
+    try {
+      await this.dataService.deleteTask(task.id!);
+      this.notificationService.showSuccess('Task deleted successfully');
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      this.notificationService.showError('Failed to delete task');
+    }
   }
 } 

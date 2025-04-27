@@ -10,13 +10,13 @@ export class DeviceService {
 
   constructor() {}
 
-  async vibrate(duration: number = 200) {
-    if ('vibrate' in navigator) {
-      try {
-        await navigator.vibrate(duration);
-      } catch (error) {
-        console.error('Vibration failed:', error);
-      }
+  vibrate(duration: number) {
+    console.log(`[DeviceService] Attempting to vibrate for ${duration}ms`);
+    if (navigator.vibrate) {
+      navigator.vibrate(duration);
+      console.log(`[DeviceService] Vibration successful for ${duration}ms`);
+    } else {
+      console.log('[DeviceService] Vibration not supported on this device');
     }
   }
 

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -18,6 +18,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NavigationComponent } from '../navigation/navigation.component';
 import { Timestamp } from '@angular/fire/firestore';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-notes',
@@ -69,14 +70,25 @@ import { Timestamp } from '@angular/fire/firestore';
               </mat-form-field>
 
               <div *ngIf="newNote.type === 'photo'" class="photo-section">
-                <button mat-raised-button color="primary" type="button" (click)="takePhoto()" [disabled]="isLoading || isCapturing">
-                  <mat-icon>camera_alt</mat-icon>
-                  {{ isCapturing ? 'Capturing...' : 'Take Photo' }}
-                </button>
-                <div *ngIf="isCapturing" class="loading-spinner">
-                  <mat-spinner diameter="20"></mat-spinner>
+                <div class="camera-preview" *ngIf="isCameraActive">
+                  <video #videoElement autoplay playsinline></video>
+                  <div class="camera-controls">
+                    <button mat-icon-button color="primary" (click)="switchCamera()" matTooltip="Switch camera">
+                      <mat-icon>flip_camera_ios</mat-icon>
+                    </button>
+                    <button mat-icon-button color="primary" (click)="capturePhoto()" matTooltip="Take photo">
+                      <mat-icon>camera_alt</mat-icon>
+                    </button>
+                  </div>
                 </div>
+                <button *ngIf="!isCameraActive" mat-raised-button color="primary" type="button" (click)="startCamera()" [disabled]="isLoading">
+                  <mat-icon>camera_alt</mat-icon>
+                  Start Camera
+                </button>
                 <img *ngIf="newNote.photoUrl" [src]="newNote.photoUrl" alt="Captured photo" class="photo-preview">
+                <button *ngIf="newNote.photoUrl" mat-icon-button color="warn" (click)="removePhoto()" matTooltip="Remove photo">
+                  <mat-icon>delete</mat-icon>
+                </button>
               </div>
 
               <div *ngIf="newNote.type === 'audio'" class="audio-section">
@@ -293,9 +305,53 @@ import { Timestamp } from '@angular/fire/firestore';
         margin-top: 56px;
       }
     }
+
+    .camera-preview {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: #000;
+    }
+
+    .camera-preview video {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .camera-controls {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 16px;
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 8px;
+      border-radius: 24px;
+    }
+
+    .camera-controls button {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .camera-controls button:hover {
+      background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .photo-preview {
+      max-width: 300px;
+      border-radius: 4px;
+      margin-top: 16px;
+    }
   `]
 })
 export class NotesComponent implements OnInit {
+  @ViewChild('videoElement') videoElement!: ElementRef<HTMLVideoElement>;
+  
   notes: Note[] = [];
   newNote: Partial<Note> = {
     title: '',
@@ -307,19 +363,30 @@ export class NotesComponent implements OnInit {
   isCapturing = false;
   isRecording = false;
   userId: string = '';
+  isCameraActive = false;
+  private stream: MediaStream | null = null;
+  private facingMode: 'user' | 'environment' = 'user';
 
   constructor(
     private dataService: DataService,
     private authService: AuthService,
     private deviceService: DeviceService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private router: Router
   ) {}
 
   async ngOnInit() {
-    const user = await this.authService.getCurrentUser();
-    if (user) {
+    try {
+      const user = await this.authService.getCurrentUser();
+      if (!user) {
+        this.router.navigate(['/login']);
+        return;
+      }
       this.userId = user.uid;
       this.loadNotes();
+    } catch (error) {
+      console.error('Error initializing notes component:', error);
+      this.router.navigate(['/login']);
     }
   }
 
@@ -393,20 +460,70 @@ export class NotesComponent implements OnInit {
     }
   }
 
-  async takePhoto() {
+  async startCamera() {
     try {
-      this.isCapturing = true;
-      const photoUrl = await this.deviceService.takePhoto();
-      if (photoUrl) {
-        this.newNote.photoUrl = photoUrl;
+      this.isCameraActive = true;
+      const constraints = {
+        video: {
+          facingMode: this.facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      };
+
+      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+      this.videoElement.nativeElement.srcObject = this.stream;
+    } catch (error) {
+      console.error('Error starting camera:', error);
+      this.showError('Failed to start camera');
+      this.isCameraActive = false;
+    }
+  }
+
+  async switchCamera() {
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+    }
+    this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
+    await this.startCamera();
+  }
+
+  async capturePhoto() {
+    try {
+      if (!this.stream) return;
+
+      const video = this.videoElement.nativeElement;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      
+      if (ctx) {
+        ctx.drawImage(video, 0, 0);
+        this.newNote.photoUrl = canvas.toDataURL('image/jpeg');
         this.showSuccess('Photo captured successfully');
+        this.stopCamera();
       }
     } catch (error) {
       console.error('Error capturing photo:', error);
       this.showError('Failed to capture photo');
-    } finally {
-      this.isCapturing = false;
     }
+  }
+
+  removePhoto() {
+    this.newNote.photoUrl = undefined;
+  }
+
+  stopCamera() {
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+      this.stream = null;
+    }
+    this.isCameraActive = false;
+  }
+
+  ngOnDestroy() {
+    this.stopCamera();
   }
 
   async recordAudio() {

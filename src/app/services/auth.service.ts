@@ -9,19 +9,35 @@ import { BehaviorSubject, firstValueFrom } from 'rxjs';
 export class AuthService {
   private userSubject = new BehaviorSubject<User | null>(null);
   user$ = this.userSubject.asObservable();
+  private authInitialized = false;
 
   constructor(
     private auth: Auth,
     private router: Router
   ) {
+    // Listen to auth state changes
     onAuthStateChanged(this.auth, (user) => {
       console.log('Auth state changed:', user);
       this.userSubject.next(user);
+      this.authInitialized = true;
     });
   }
 
   async getCurrentUser(): Promise<User | null> {
     try {
+      // Wait for auth to be initialized
+      if (!this.authInitialized) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        return this.getCurrentUser();
+      }
+
+      // First check if we have a current user in the auth instance
+      const currentUser = this.auth.currentUser;
+      if (currentUser) {
+        return currentUser;
+      }
+      
+      // If not, try to get it from the BehaviorSubject
       const user = await firstValueFrom(this.user$);
       console.log('Current user from getCurrentUser:', user);
       return user;

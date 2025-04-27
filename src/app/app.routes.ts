@@ -1,5 +1,11 @@
 import { Routes } from '@angular/router';
 import { AuthGuard } from './guards/auth.guard';
+import { DashboardComponent } from './components/dashboard/dashboard.component';
+import { LoginComponent } from './components/login/login.component';
+import { RegisterComponent } from './components/register/register.component';
+import { TasksComponent } from './components/tasks/tasks.component';
+import { GoalsComponent } from './components/goals/goals.component';
+import { NotesComponent } from './components/notes/notes.component';
 
 export const routes: Routes = [
   {
@@ -9,29 +15,29 @@ export const routes: Routes = [
   },
   {
     path: 'dashboard',
-    loadComponent: () => import('./components/dashboard/dashboard.component').then(m => m.DashboardComponent)
+    component: DashboardComponent
   },
   {
     path: 'login',
-    loadComponent: () => import('./components/login/login.component').then(m => m.LoginComponent)
+    component: LoginComponent
   },
   {
     path: 'register',
-    loadComponent: () => import('./components/register/register.component').then(m => m.RegisterComponent)
+    component: RegisterComponent
   },
   {
     path: 'tasks',
-    loadComponent: () => import('./components/tasks/tasks.component').then(m => m.TasksComponent),
+    component: TasksComponent,
     canActivate: [AuthGuard]
   },
   {
     path: 'goals',
-    loadComponent: () => import('./components/goals/goals.component').then(m => m.GoalsComponent),
+    component: GoalsComponent,
     canActivate: [AuthGuard]
   },
   {
     path: 'notes',
-    loadComponent: () => import('./components/notes/notes.component').then(m => m.NotesComponent),
+    component: NotesComponent,
     canActivate: [AuthGuard]
   },
   {
