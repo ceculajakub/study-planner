@@ -72,7 +72,6 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
           <mat-divider class="my-3"></mat-divider>
 
           <button mat-raised-button (click)="signInWithGoogle()" class="full-width google-button" [disabled]="isLoading">
-            <mat-icon class="google-icon">g_mobiledata</mat-icon>
             <span>Sign in with Google</span>
           </button>
         </mat-card-content>
@@ -159,7 +158,6 @@ export class LoginComponent {
       password: ['', [Validators.required]]
     });
 
-    // Get return URL from route parameters or default to '/dashboard'
     this.route.queryParams.subscribe(params => {
       this.returnUrl = params['returnUrl'] || '/dashboard';
     });

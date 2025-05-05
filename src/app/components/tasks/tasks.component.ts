@@ -15,7 +15,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatListModule } from '@angular/material/list';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
@@ -51,7 +51,6 @@ import { User } from '@angular/fire/auth';
   template: `
     <app-navigation>
       <main class="tasks-content">
-        <!-- Add Task Form -->
         <mat-card class="task-form-card">
           <mat-card-header>
             <mat-card-title>Add New Task</mat-card-title>
@@ -85,7 +84,6 @@ import { User } from '@angular/fire/auth';
           </mat-card-content>
         </mat-card>
 
-        <!-- Tasks List -->
         <mat-card class="tasks-list-card">
           <mat-card-header>
             <mat-card-title>Your Tasks</mat-card-title>
@@ -118,7 +116,7 @@ import { User } from '@angular/fire/auth';
               </mat-list-item>
               <mat-list-item *ngIf="tasks.length === 0">
                 <div class="no-tasks">
-                  <p>No tasks yet. Add your first task above!</p>
+                  <p>No tasks yet.</p>
                 </div>
               </mat-list-item>
             </mat-list>
@@ -154,7 +152,9 @@ import { User } from '@angular/fire/auth';
       justify-content: flex-end;
       margin-top: 16px;
     }
-
+    mat-card-header{
+      margin-bottom: 12px;
+    }
     .task-item {
       height: auto !important;
       padding: 16px 0;
@@ -215,6 +215,7 @@ import { User } from '@angular/fire/auth';
     .task-actions {
       display: flex;
       gap: 8px;
+      margin-left: auto;
     }
 
     .no-tasks {
@@ -250,13 +251,25 @@ import { User } from '@angular/fire/auth';
         margin-top: 56px;
       }
 
+      .task-content {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+      }
+
       .task-header {
         flex-direction: column;
         align-items: flex-start;
+        gap: 4px;
       }
 
       .task-due-date {
         font-size: 12px;
+      }
+
+      .task-actions {
+        margin-left: auto;
+        min-width: 40px;
       }
     }
   `]
@@ -272,24 +285,25 @@ export class TasksComponent implements OnInit, OnDestroy {
   isLoading = false;
   userId: string | null = null;
   private authSubscription!: Subscription;
+  private lastDeletedTask: Task | null = null;
+  private motionHandler: ((event: DeviceMotionEvent) => void) | null = null;
 
   constructor(
     private dataService: DataService,
     private authService: AuthService,
     private deviceService: DeviceService,
-    private notificationService: NotificationService,
-    private router: Router
-  ) {}
+    private notificationService: NotificationService  ) {}
 
   ngOnInit() {
-    // Subscribe to auth state changes
     this.authSubscription = this.authService.user$.subscribe(async (user: User | null) => {
       if (user) {
         this.userId = user.uid;
         await this.loadTasks();
+        this.setupShakeDetection();
       } else {
         this.tasks = [];
         this.userId = null;
+        this.removeShakeDetection();
       }
     });
   }
@@ -297,6 +311,61 @@ export class TasksComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     if (this.authSubscription) {
       this.authSubscription.unsubscribe();
+    }
+    this.removeShakeDetection();
+  }
+
+  private setupShakeDetection() {
+    if (window.DeviceMotionEvent) {
+      let lastX = 0;
+      let lastY = 0;
+      let lastZ = 0;
+      let lastTime = 0;
+      const threshold = 15;
+      const timeout = 1000;
+
+      this.motionHandler = (event: DeviceMotionEvent) => {
+        const currentTime = Date.now();
+        if (currentTime - lastTime < timeout) return;
+
+        const acceleration = event.accelerationIncludingGravity;
+        if (!acceleration) return;
+
+        const deltaX = Math.abs(acceleration.x! - lastX);
+        const deltaY = Math.abs(acceleration.y! - lastY);
+        const deltaZ = Math.abs(acceleration.z! - lastZ);
+
+        if (deltaX > threshold || deltaY > threshold || deltaZ > threshold) {
+          this.handleShake();
+          lastTime = currentTime;
+        }
+
+        lastX = acceleration.x!;
+        lastY = acceleration.y!;
+        lastZ = acceleration.z!;
+      };
+
+      window.addEventListener('devicemotion', this.motionHandler);
+    }
+  }
+
+  private removeShakeDetection() {
+    if (this.motionHandler) {
+      window.removeEventListener('devicemotion', this.motionHandler);
+      this.motionHandler = null;
+    }
+  }
+
+  private async handleShake() {
+    if (this.lastDeletedTask) {
+      try {
+        await this.dataService.addTask(this.lastDeletedTask);
+        this.notificationService.showSuccess('Task restored');
+        this.lastDeletedTask = null;
+        await this.loadTasks();
+      } catch (error) {
+        this.notificationService.showError('Failed to restore task');
+      }
     }
   }
 
@@ -346,7 +415,6 @@ export class TasksComponent implements OnInit, OnDestroy {
       await this.dataService.addTask(task);
       console.log('Task added successfully');
       
-      // Reset the form
       this.newTask = {
         title: '',
         description: '',
@@ -354,7 +422,6 @@ export class TasksComponent implements OnInit, OnDestroy {
         completed: false
       };
 
-      // Reload tasks to show the new one
       await this.loadTasks();
       this.notificationService.showSuccess('Task added successfully');
     } catch (error) {
@@ -381,8 +448,9 @@ export class TasksComponent implements OnInit, OnDestroy {
 
   async deleteTask(task: Task) {
     try {
+      this.lastDeletedTask = { ...task };
       await this.dataService.deleteTask(task.id!);
-      this.notificationService.showSuccess('Task deleted successfully');
+      this.notificationService.showSuccess('Task deleted. Shake to undo');
     } catch (error) {
       console.error('Error deleting task:', error);
       this.notificationService.showError('Failed to delete task');

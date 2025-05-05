@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { DataService, Goal } from '../../services/data.service';
 import { AuthService } from '../../services/auth.service';
@@ -16,7 +16,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { NavigationComponent } from '../navigation/navigation.component';
@@ -50,8 +50,7 @@ import { Router } from '@angular/router';
   template: `
     <app-navigation>
       <main class="goals-content">
-        <!-- Add Goal Form -->
-        <mat-card class="goal-form-card">
+        <mat-card class="goal-form-card" id="goalForm" #goalForm>
           <mat-card-header>
             <mat-card-title>{{ editingGoal ? 'Edit Goal' : 'Add New Goal' }}</mat-card-title>
           </mat-card-header>
@@ -98,7 +97,6 @@ import { Router } from '@angular/router';
           </mat-card-content>
         </mat-card>
 
-        <!-- Goals List -->
         <mat-card class="goals-list-card">
           <mat-card-header>
             <mat-card-title>Your Goals</mat-card-title>
@@ -136,7 +134,7 @@ import { Router } from '@angular/router';
                 <mat-divider></mat-divider>
               </mat-list-item>
               <mat-list-item *ngIf="goals.length === 0">
-                <div class="no-goals">No goals yet. Add your first goal above!</div>
+                <div class="no-goals">No goals yet.</div>
               </mat-list-item>
             </mat-list>
           </mat-card-content>
@@ -264,6 +262,10 @@ import { Router } from '@angular/router';
       gap: 8px;
     }
 
+    .goal-form-card {
+      scroll-margin-top: 100px;
+    }
+  
     @media (max-width: 599px) {
       .goals-content {
         margin-top: 56px;
@@ -358,10 +360,8 @@ export class GoalsComponent implements OnInit, OnDestroy {
   async addGoal() {
     try {
       this.isLoading = true;
-      console.log('Starting to add goal...');
       
       const user = await this.authService.getCurrentUser();
-      console.log('Current user:', user);
       
       if (!user) {
         console.error('No user logged in');
@@ -369,7 +369,6 @@ export class GoalsComponent implements OnInit, OnDestroy {
         return;
       }
 
-      console.log('Creating goal with data:', this.newGoal);
       const goal: Goal = {
         ...this.newGoal,
         userId: user.uid,
@@ -377,11 +376,8 @@ export class GoalsComponent implements OnInit, OnDestroy {
         progress: this.newGoal.progress || 0
       } as Goal;
 
-      console.log('Sending goal to data service:', goal);
       await this.dataService.addGoal(goal);
-      console.log('Goal added successfully');
       
-      // Reset the form
       this.newGoal = {
         title: '',
         description: '',
@@ -389,7 +385,6 @@ export class GoalsComponent implements OnInit, OnDestroy {
         progress: 0
       };
 
-      // Reload goals to show the new one
       await this.loadGoals();
       this.notificationService.showSuccess('Goal added successfully');
     } catch (error) {
@@ -428,6 +423,15 @@ export class GoalsComponent implements OnInit, OnDestroy {
 
   async editGoal(goal: Goal) {
     this.editingGoal = { ...goal };
+    setTimeout(() => {
+      const element = document.getElementById('goalForm');
+      if (element) {
+        element.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    }, 100);
   }
 
   async saveEdit() {
@@ -473,6 +477,5 @@ export class GoalsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    // Clean up any subscriptions or resources if needed
   }
 } 

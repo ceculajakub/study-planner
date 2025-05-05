@@ -11,7 +11,6 @@ export class DeviceService {
   constructor() {}
 
   vibrate(duration: number) {
-    console.log(`[DeviceService] Attempting to vibrate for ${duration}ms`);
     if (navigator.vibrate) {
       navigator.vibrate(duration);
       console.log(`[DeviceService] Vibration successful for ${duration}ms`);
@@ -53,7 +52,7 @@ export class DeviceService {
         }
       };
 
-      this.mediaRecorder.start(100); // Collect data every 100ms
+      this.mediaRecorder.start(100);
     } catch (error) {
       console.error('Error starting recording:', error);
       this.cleanup();

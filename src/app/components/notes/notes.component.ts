@@ -43,7 +43,6 @@ import { Router } from '@angular/router';
   template: `
     <app-navigation>
       <main class="notes-content">
-        <!-- Add Note Form -->
         <mat-card class="note-form-card">
           <mat-card-header>
             <mat-card-title>Add New Note</mat-card-title>
@@ -113,7 +112,6 @@ import { Router } from '@angular/router';
           </mat-card-content>
         </mat-card>
 
-        <!-- Notes List -->
         <mat-card class="notes-list-card">
           <mat-card-header>
             <mat-card-title>Your Notes</mat-card-title>
@@ -132,9 +130,13 @@ import { Router } from '@angular/router';
                   <div class="note-body">
                     <div *ngIf="note.type === 'text'" class="note-text">
                       {{ note.content }}
+                      <button mat-icon-button color="primary" (click)="copyNoteContent(note)" matTooltip="Copy note content">
+                        <mat-icon>content_copy</mat-icon>
+                      </button>
                     </div>
                     <div *ngIf="note.type === 'photo' && note.photoUrl" class="note-photo">
-                      <img [src]="note.photoUrl" alt="Note photo" (click)="openFullscreen(note.photoUrl)">
+                      <img [src]="note.photoUrl" alt="Note photo">
+                      
                     </div>
                     <div *ngIf="note.type === 'audio' && note.audioData" class="note-audio">
                       <audio [src]="note.audioData" controls></audio>
@@ -143,13 +145,13 @@ import { Router } from '@angular/router';
                 </div>
                 <div class="note-actions">
                   <button mat-icon-button color="warn" (click)="deleteNote(note)" [disabled]="isLoading" matTooltip="Delete note">
-                    <mat-icon svgIcon="delete"></mat-icon>
+                  <mat-icon>delete</mat-icon>
                   </button>
                 </div>
                 <mat-divider></mat-divider>
               </mat-list-item>
               <mat-list-item *ngIf="notes.length === 0">
-                <div class="no-notes">No notes found. Add your first note!</div>
+                <div class="no-notes">No notes found.</div>
               </mat-list-item>
             </mat-list>
           </mat-card-content>
@@ -237,6 +239,13 @@ import { Router } from '@angular/router';
     .note-text {
       color: rgba(0, 0, 0, 0.87);
       white-space: pre-wrap;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    mat-card-header{
+      margin-bottom: 12px;
     }
 
     .note-photo img {
@@ -444,7 +453,6 @@ export class NotesComponent implements OnInit {
         await this.dataService.addNote(note);
         this.showSuccess('Note added successfully');
         
-        // Reset form
         this.newNote = {
           title: '',
           content: '',
@@ -549,10 +557,6 @@ export class NotesComponent implements OnInit {
     }
   }
 
-  openFullscreen(imageUrl: string) {
-    window.open(imageUrl, '_blank');
-  }
-
   async deleteNote(note: Note) {
     try {
       this.isLoading = true;
@@ -594,5 +598,17 @@ export class NotesComponent implements OnInit {
       duration: 3000,
       panelClass: ['success-snackbar']
     });
+  }
+
+  async copyNoteContent(note: Note) {
+    try {
+      if (note.type === 'text' && note.content) {
+        await navigator.clipboard.writeText(note.content);
+        this.showSuccess('Note content copied to clipboard!');
+      }
+    } catch (error) {
+      console.error('Failed to copy note content:', error);
+      this.showError('Failed to copy note content. Please try again.');
+    }
   }
 } 

@@ -15,7 +15,6 @@ export class AuthService {
     private auth: Auth,
     private router: Router
   ) {
-    // Listen to auth state changes
     onAuthStateChanged(this.auth, (user) => {
       console.log('Auth state changed:', user);
       this.userSubject.next(user);
@@ -25,19 +24,16 @@ export class AuthService {
 
   async getCurrentUser(): Promise<User | null> {
     try {
-      // Wait for auth to be initialized
       if (!this.authInitialized) {
         await new Promise(resolve => setTimeout(resolve, 100));
         return this.getCurrentUser();
       }
 
-      // First check if we have a current user in the auth instance
       const currentUser = this.auth.currentUser;
       if (currentUser) {
         return currentUser;
       }
       
-      // If not, try to get it from the BehaviorSubject
       const user = await firstValueFrom(this.user$);
       console.log('Current user from getCurrentUser:', user);
       return user;
@@ -110,7 +106,6 @@ export class AuthService {
 
   private getErrorMessage(errorCode: string): string {
     switch (errorCode) {
-      // Common errors
       case 'auth/invalid-email':
         return 'Please enter a valid email address.';
       case 'auth/user-disabled':
@@ -130,7 +125,6 @@ export class AuthService {
       case 'auth/too-many-requests':
         return 'Too many attempts. Please try again later.';
       
-      // Google Sign-in specific errors
       case 'auth/popup-closed-by-user':
         return 'Sign-in was cancelled.';
       case 'auth/popup-blocked':

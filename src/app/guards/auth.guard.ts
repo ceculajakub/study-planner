@@ -8,18 +8,16 @@ export const AuthGuard = () => {
   const router = inject(Router);
 
   return authService.user$.pipe(
-    // Wait for the first non-null value (initial auth state)
     filter(user => user !== null),
     take(1),
     map(user => {
       if (user) {
         return true;
       } else {
-        // Store the attempted URL for redirecting after login
         const currentUrl = window.location.pathname;
         router.navigate(['/login'], { 
           queryParams: { returnUrl: currentUrl },
-          replaceUrl: true // Replace the current URL in history
+          replaceUrl: true
         });
         return false;
       }

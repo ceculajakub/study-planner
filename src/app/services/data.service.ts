@@ -38,7 +38,6 @@ export interface Note {
 export class DataService {
   constructor(private firestore: Firestore) {}
 
-  // Tasks Collection
   getTasks(userId: string): Observable<Task[]> {
     const tasksRef = collection(this.firestore, 'tasks');
     const q = query(tasksRef, where('userId', '==', userId));
@@ -51,7 +50,7 @@ export class DataService {
       const tasksRef = collection(this.firestore, 'tasks');
       const docRef = await addDoc(tasksRef, {
         ...task,
-        dueDate: task.dueDate.toISOString() // Convert Date to string for Firestore
+        dueDate: task.dueDate.toISOString() 
       });
       console.log('DataService: Task added with ID:', docRef.id);
       return docRef;
@@ -71,7 +70,6 @@ export class DataService {
     return deleteDoc(taskRef);
   }
 
-  // Goals Collection
   getGoals(userId: string): Observable<Goal[]> {
     const goalsRef = collection(this.firestore, 'goals');
     const q = query(goalsRef, where('userId', '==', userId));
@@ -98,12 +96,10 @@ export class DataService {
     const goalRef = doc(this.firestore, `goals/${goalId}`);
     const updateData = { ...goal };
     
-    // Convert date if it exists
     if (updateData.targetDate instanceof Date) {
       updateData.targetDate = updateData.targetDate.toISOString();
     }
     
-    // Ensure progress is a number
     if (typeof updateData.progress === 'number') {
       updateData.progress = Math.max(0, Math.min(100, updateData.progress));
     }
@@ -116,7 +112,6 @@ export class DataService {
     return deleteDoc(goalRef);
   }
 
-  // Notes Collection
   getNotes(userId: string): Observable<Note[]> {
     const notesRef = collection(this.firestore, 'notes');
     const q = query(notesRef, where('userId', '==', userId));

@@ -16,7 +16,7 @@ export class NotificationService {
       duration,
       panelClass: ['success-snackbar']
     });
-    this.deviceService.vibrate(100); // Short vibration for success
+    this.deviceService.vibrate(100); 
   }
 
   showError(message: string, duration: number = 5000) {
@@ -24,7 +24,7 @@ export class NotificationService {
       duration,
       panelClass: ['error-snackbar']
     });
-    this.deviceService.vibrate(200); // Longer vibration for errors
+    this.deviceService.vibrate(200); 
   }
 
   showInfo(message: string, duration: number = 3000) {
@@ -32,6 +32,6 @@ export class NotificationService {
       duration,
       panelClass: ['info-snackbar']
     });
-    this.deviceService.vibrate(50); // Very short vibration for info
+    this.deviceService.vibrate(50);
   }
 } 

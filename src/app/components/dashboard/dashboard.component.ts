@@ -106,7 +106,7 @@ import { User } from '@angular/fire/auth';
                     <div class="note-title">{{ note.title }}</div>
                     <div class="note-date">{{ formatDate(note.createdAt) }}</div>
                     <div *ngIf="note.type === 'photo' && note.photoUrl" class="note-photo">
-                      <img [src]="note.photoUrl" alt="Note photo" (click)="openFullscreen(note.photoUrl)">
+                      <img [src]="note.photoUrl" alt="Note photo">
                     </div>
                     <div *ngIf="note.type === 'text'" class="note-text">
                       {{ note.content }}
@@ -435,9 +435,5 @@ export class DashboardComponent implements OnInit, OnDestroy {
     } catch (error) {
       this.showError('Failed to sign out');
     }
-  }
-
-  openFullscreen(imageUrl: string) {
-    window.open(imageUrl, '_blank');
   }
 } 
